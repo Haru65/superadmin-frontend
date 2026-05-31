@@ -1,0 +1,11 @@
+import { CreditCard, Eye, PauseCircle, PlayCircle, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { StatusBadge } from '@/components/common/StatusBadge'
+import { TenantTypeBadge } from '@/components/common/TenantTypeBadge'
+import type { Tenant } from '@/types/superadmin'
+import { formatDate } from '@/utils/formatDate'
+
+export const TenantCard = ({ tenant, onPayment, onStatus, onDelete }: { tenant: Tenant; onPayment: (tenant: Tenant) => void; onStatus: (tenant: Tenant) => void; onDelete: (tenant: Tenant) => void }) =>
+  <Card className="p-4"><div className="flex items-start gap-3"><div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-brand-50 font-bold text-brand-700">{tenant.logoUrl ? <img src={tenant.logoUrl} className="h-full w-full object-cover" /> : tenant.name.slice(0, 2).toUpperCase()}</div><div className="min-w-0 flex-1"><h3 className="truncate font-bold">{tenant.name}</h3><p className="truncate text-xs text-slate-400">{tenant.slug}</p><div className="mt-2 flex gap-2"><TenantTypeBadge type={tenant.type} /><StatusBadge status={tenant.status} /></div></div></div><div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-500"><p><b className="text-slate-700">Owner:</b> {tenant.ownerEmail || '-'}</p><p><b className="text-slate-700">Created:</b> {formatDate(tenant.createdAt)}</p></div><div className="mt-4 flex flex-wrap gap-2"><Button asChild size="sm" variant="outline"><Link to={`/tenants/${tenant.id}?type=${tenant.type}`}><Eye className="h-3.5 w-3.5" />Manage</Link></Button><Button size="sm" variant="outline" onClick={() => onPayment(tenant)}><CreditCard className="h-3.5 w-3.5" />Payment</Button><Button size="sm" variant="ghost" onClick={() => onStatus(tenant)}>{tenant.status === 'active' ? <PauseCircle className="h-3.5 w-3.5" /> : <PlayCircle className="h-3.5 w-3.5" />}</Button><Button size="sm" variant="ghost" className="text-red-600" onClick={() => onDelete(tenant)}><Trash2 className="h-3.5 w-3.5" /></Button></div></Card>
