@@ -89,6 +89,13 @@ export const superadminService = {
     const status = tenant.status === 'active' ? 'paused' : 'active'
     return gatewayApi.patch(`/superadmin/tenants/${ref.source}/${ref.id}/status`, { status })
   },
+  async createTenant(payload: Record<string, unknown>) {
+    return gatewayApi.post('/superadmin/tenants', payload)
+  },
+  async updateTenant(tenant: Tenant, payload: Record<string, unknown>) {
+    const ref = tenantReference(tenant)
+    return gatewayApi.put(`/superadmin/tenants/${ref.source}/${ref.id}`, payload)
+  },
   async deleteTenant(tenant: Tenant) {
     const ref = tenantReference(tenant)
     return gatewayApi.delete(`/superadmin/tenants/${ref.source}/${ref.id}`)
@@ -99,7 +106,12 @@ export const superadminService = {
   },
   async updateUser(id: string, payload: Record<string, unknown>) {
     const ref = reference(id)
-    return gatewayApi.patch(`/superadmin/users/${ref.source}/${ref.id}`, payload)
+    const tenantValue = payload.tenantId || payload.restaurantId
+    const tenantPayload = tenantValue ? (() => {
+      const tenantRef = reference(String(tenantValue), ref.source)
+      return { tenantId: tenantRef.id, restaurantId: tenantRef.id }
+    })() : {}
+    return gatewayApi.patch(`/superadmin/users/${ref.source}/${ref.id}`, { ...payload, ...tenantPayload })
   },
   async deleteUser(id: string) {
     const ref = reference(id)
