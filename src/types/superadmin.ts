@@ -82,6 +82,8 @@ export type PaymentConfig = {
   tenantId: string
   tenantName?: string
   provider: 'paytm' | 'razorpay' | 'upi' | 'none'
+  accountLabel?: string
+  isDefault?: boolean
   keyId?: string
   keySecretMasked?: string
   webhookSecretMasked?: string
@@ -89,6 +91,7 @@ export type PaymentConfig = {
   isActive: boolean
   isConfigured: boolean
   createdAt?: string
+  accounts?: PaymentConfig[]
 }
 
 export type SourceErrors = Partial<Record<BackendSource, string>>

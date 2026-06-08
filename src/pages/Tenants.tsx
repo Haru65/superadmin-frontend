@@ -32,7 +32,7 @@ export const Tenants = () => {
   const props = {
     tenants: filtered,
     onPayment: (tenant: Tenant) => {
-      if ((tenant.source || tenant.type) !== 'cafe') return toast.info('Payment configuration is currently available for cafe businesses.')
+      if (!['cafe', 'restaurant'].includes(tenant.source || tenant.type)) return toast.info('Payment configuration is available for cafe and restaurant businesses.')
       setPaymentTenant(tenant)
     },
     onStatus: (tenant: Tenant) => {
