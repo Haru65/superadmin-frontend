@@ -180,7 +180,6 @@ export const PaymentConfigModal = ({ tenant, open, onClose }: { tenant?: Tenant;
                   <select value={form.provider} onChange={(e) => set('provider', e.target.value as PaymentConfig['provider'])} className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm">
                     <option value="paytm">Paytm</option>
                     <option value="razorpay">Razorpay</option>
-                    <option value="upi">UPI</option>
                   </select>
                 </label>
               </div>
