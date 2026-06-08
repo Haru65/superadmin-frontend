@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ImageUp, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { superadminService } from '@/api/superadminService'
 import { Button } from '@/components/ui/button'
@@ -27,10 +28,39 @@ const initial = {
   adminPassword: '',
 }
 
+const MAX_LOGO_SIZE = 5 * 1024 * 1024
+const LOGO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(String(reader.result))
+  reader.onerror = () => reject(new Error('Unable to read logo image'))
+  reader.readAsDataURL(file)
+})
+
 export const CreateTenantModal = ({ open, onClose, onCreated }: Props) => {
   const [form, setForm] = useState(initial)
+  const [logo, setLogo] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState('')
   const [saving, setSaving] = useState(false)
   const set = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }))
+  const clearLogo = () => {
+    setLogo(null)
+    setLogoPreview('')
+  }
+  const onLogoChange = async (file?: File) => {
+    if (!file) return clearLogo()
+    if (!LOGO_TYPES.includes(file.type)) {
+      toast.error('Logo must be a JPG, PNG, or WebP image')
+      return clearLogo()
+    }
+    if (file.size > MAX_LOGO_SIZE) {
+      toast.error('Logo must be 5MB or smaller')
+      return clearLogo()
+    }
+    setLogo(file)
+    setLogoPreview(await fileToDataUrl(file))
+  }
   const canCreate = useMemo(() => {
     if (!form.name.trim()) return false
     if (!form.adminName.trim() || !form.adminEmail.trim() || form.adminPassword.length < 8) return false
@@ -39,5 +69,35 @@ export const CreateTenantModal = ({ open, onClose, onCreated }: Props) => {
     return false
   }, [form])
 
-  return <Dialog open={open} onOpenChange={(value) => !value && onClose()}><DialogContent className="max-w-2xl"><DialogTitle>Create business</DialogTitle><DialogDescription>Create the tenant and its first admin login.</DialogDescription><div className="mt-5 grid gap-3 sm:grid-cols-2"><label className="block text-xs font-bold text-slate-600">Business type<select className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" value={form.source} onChange={(event) => set('source', event.target.value)}><option value="restaurant">Restaurant</option><option value="cafe">Cafe</option></select></label><label className="block text-xs font-bold text-slate-600">Plan<select className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" value={form.plan} onChange={(event) => set('plan', event.target.value)}><option value="Free">Free</option><option value="Standard">Standard</option><option value="Premium">Premium</option><option value="Enterprise">Enterprise</option></select></label><label className="block text-xs font-bold text-slate-600">Business name<Input className="mt-1" value={form.name} onChange={(event) => set('name', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Slug<Input className="mt-1" value={form.slug} onChange={(event) => set('slug', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Owner name<Input className="mt-1" value={form.ownerName} onChange={(event) => set('ownerName', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Owner email<Input className="mt-1" type="email" value={form.ownerEmail} onChange={(event) => set('ownerEmail', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Phone number<Input className="mt-1" value={form.phone} onChange={(event) => set('phone', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">City<Input className="mt-1" value={form.city} onChange={(event) => set('city', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600 sm:col-span-2">Address<Input className="mt-1" value={form.address} onChange={(event) => set('address', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Admin name<Input className="mt-1" value={form.adminName} onChange={(event) => set('adminName', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Admin email<Input className="mt-1" type="email" value={form.adminEmail} onChange={(event) => set('adminEmail', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600 sm:col-span-2">Temporary password<Input className="mt-1" type="password" value={form.adminPassword} onChange={(event) => set('adminPassword', event.target.value)} /></label></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={onClose}>Cancel</Button><Button disabled={!canCreate || saving} onClick={async () => { setSaving(true); try { await superadminService.createTenant({ ...form, type: form.source, tenantType: form.source, contact_phone: form.phone, phone: form.phone, owner: form.ownerName, adminEmail: form.adminEmail, adminName: form.adminName, adminPassword: form.adminPassword, subscription: { plan: form.plan, status: 'active' } }); toast.success('Business created'); setForm(initial); onCreated(); onClose() } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to create business') } finally { setSaving(false) } }}>Create business</Button></div></DialogContent></Dialog>
+  const create = async () => {
+    setSaving(true)
+    try {
+      const logoDataUrl = logo ? await fileToDataUrl(logo) : undefined
+      await superadminService.createTenant({
+        ...form,
+        type: form.source,
+        tenantType: form.source,
+        contact_phone: form.phone,
+        phone: form.phone,
+        owner: form.ownerName,
+        logo: logoDataUrl,
+        logoUrl: logoDataUrl,
+        adminEmail: form.adminEmail,
+        adminName: form.adminName,
+        adminPassword: form.adminPassword,
+        subscription: { plan: form.plan, status: 'active' },
+      })
+      toast.success('Business created')
+      setForm(initial)
+      clearLogo()
+      onCreated()
+      onClose()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to create business')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return <Dialog open={open} onOpenChange={(value) => !value && onClose()}><DialogContent className="max-w-2xl"><DialogTitle>Create business</DialogTitle><DialogDescription>Create the tenant and its first admin login.</DialogDescription><div className="mt-5 grid gap-3 sm:grid-cols-2"><label className="block text-xs font-bold text-slate-600">Business type<select className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" value={form.source} onChange={(event) => set('source', event.target.value)}><option value="restaurant">Restaurant</option><option value="cafe">Cafe</option></select></label><label className="block text-xs font-bold text-slate-600">Plan<select className="mt-1 h-10 w-full rounded-lg border border-slate-200 px-3 text-sm" value={form.plan} onChange={(event) => set('plan', event.target.value)}><option value="Free">Free</option><option value="Standard">Standard</option><option value="Premium">Premium</option><option value="Enterprise">Enterprise</option></select></label><label className="block text-xs font-bold text-slate-600">Business name<Input className="mt-1" value={form.name} onChange={(event) => set('name', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Slug<Input className="mt-1" value={form.slug} onChange={(event) => set('slug', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600 sm:col-span-2">Logo image<div className="mt-1 flex items-center gap-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3"><div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white text-slate-400">{logoPreview ? <img src={logoPreview} alt="Business logo preview" className="h-full w-full object-cover" /> : <ImageUp className="h-5 w-5" />}</div><div className="min-w-0 flex-1"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => void onLogoChange(event.target.files?.[0])} /><p className="mt-1 truncate text-[11px] font-normal text-slate-400">{logo ? logo.name : 'JPG, PNG, or WebP up to 5MB'}</p></div>{logo && <Button type="button" variant="ghost" size="icon" onClick={clearLogo} title="Remove logo"><X className="h-4 w-4" /></Button>}</div></label><label className="block text-xs font-bold text-slate-600">Owner name<Input className="mt-1" value={form.ownerName} onChange={(event) => set('ownerName', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Owner email<Input className="mt-1" type="email" value={form.ownerEmail} onChange={(event) => set('ownerEmail', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Phone number<Input className="mt-1" value={form.phone} onChange={(event) => set('phone', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">City<Input className="mt-1" value={form.city} onChange={(event) => set('city', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600 sm:col-span-2">Address<Input className="mt-1" value={form.address} onChange={(event) => set('address', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Admin name<Input className="mt-1" value={form.adminName} onChange={(event) => set('adminName', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600">Admin email<Input className="mt-1" type="email" value={form.adminEmail} onChange={(event) => set('adminEmail', event.target.value)} /></label><label className="block text-xs font-bold text-slate-600 sm:col-span-2">Temporary password<Input className="mt-1" type="password" value={form.adminPassword} onChange={(event) => set('adminPassword', event.target.value)} /></label></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={onClose}>Cancel</Button><Button disabled={!canCreate || saving} onClick={create}>Create business</Button></div></DialogContent></Dialog>
 }
