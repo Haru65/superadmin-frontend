@@ -84,9 +84,9 @@ export const superadminService = {
     }
   },
 
-  async setTenantStatus(tenant: Tenant) {
+  async setTenantStatus(tenant: Tenant, nextStatus?: 'active' | 'paused') {
     const ref = tenantReference(tenant)
-    const status = tenant.status === 'active' ? 'paused' : 'active'
+    const status = nextStatus || (tenant.status === 'active' ? 'paused' : 'active')
     return gatewayApi.patch(`/superadmin/tenants/${ref.source}/${ref.id}/status`, { status })
   },
   async createTenant(payload: Record<string, unknown>) {
